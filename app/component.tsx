@@ -1,5 +1,4 @@
 "use client";
-
 import {
 	startAuthentication,
 	startRegistration,
@@ -12,7 +11,7 @@ import {
 	registerUserAction,
 	verifyPasskeyAuthAction,
 	verifyPasskeyRegistrationAction,
-} from "./core/features/webauthn/presentaion/UserActions";
+} from "@/app/core/features/webauthn/presentaion/UserActions";
 
 export default function PasskeyDemoPage() {
 	const [username, setUsername] = useState("");
@@ -197,7 +196,7 @@ export default function PasskeyDemoPage() {
 							onClick={handlePasskeyLogin}
 							className="w-full bg-emerald-600 text-white p-2 rounded hover:bg-emerald-700 font-medium"
 						>
-							🔑 Login with Passkey (No Password)
+							 Login with Passkey (No Password)
 						</button>
 					</div>
 				</div>
