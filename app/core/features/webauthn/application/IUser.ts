@@ -1,0 +1,18 @@
+import type { User } from "../domain/User";
+
+export interface CreateUserDTO {
+	username: string;
+	password: string;
+}
+
+export interface LoginUserDTO {
+	username: string;
+	password: string;
+}
+
+export interface IUser {
+	create(data: User): Promise<User>;
+	getById(id: string): Promise<User>;
+	getByUsername(username: string): Promise<User | null>;
+	save(data: User): Promise<User>;
+}
