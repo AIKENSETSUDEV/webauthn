@@ -1,75 +1,91 @@
 "use server";
-import { UserContainer } from "@/app/core/features/webauthn/implementation/UserContainer";
-import { UserRepository } from "@/app/core/features/webauthn/implementation/UserRepository";
-import { WebAuthnService } from "@/app/core/features/webauthn/implementation/WebauthnService";
+
+import type {
+	PasskeyAuthenticationOptionsDto,
+	PasskeyAuthenticationResponseDto,
+	PasskeyRegistrationOptionsDto,
+	PasskeyRegistrationResponseDto,
+} from "@/app/core/features/webauthn/application/dto/passkey.dto";
+import { createWebauthnModule } from "@/app/core/features/webauthn/composition/createWebauthnModule";
+import type { ActionResult } from "@/app/core/features/webauthn/presentaion/actionResult";
+import { toErrorMessage } from "@/app/core/features/webauthn/presentaion/actionResult";
 import { UserController } from "@/app/core/features/webauthn/presentaion/UserController";
 
-// Composition Root Singletons
-const userRepo = new UserRepository();
-const webAuthnService = new WebAuthnService();
-const userContainer = new UserContainer(userRepo, webAuthnService);
-const userController = new UserController(userContainer);
+/** Delivery entry: obtains the already-wired application API from the slice composition root. */
+const userController = new UserController(createWebauthnModule());
 
-const expectedOrigin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-const expectedRPID = process.env.NEXT_PUBLIC_APP_URL || "localhost";
+const expectedOrigin =
+	process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const expectedRPID = process.env.NEXT_PUBLIC_RP_ID || "localhost";
 
-export async function registerUserAction(username: string, password: string) {
+function parseJson<T>(value: string): T {
+	return JSON.parse(value) as T;
+}
+
+export async function registerUserAction(
+	username: string,
+	password: string,
+): Promise<ActionResult<{ userId: string }>> {
 	try {
 		const user = await userController.createUser({ username, password });
 		return { success: true, userId: user.id };
-	} catch (error: any) {
-		return { success: false, error: error.message };
+	} catch (error: unknown) {
+		return { success: false, error: toErrorMessage(error) };
 	}
 }
 
 export async function loginWithPasswordAction(
 	username: string,
 	password: string,
-) {
+): Promise<ActionResult<{ userId: string }>> {
 	try {
 		const user = await userController.loginWithPassword({
 			username,
 			password,
 		});
 		return { success: true, userId: user.id };
-	} catch (error: any) {
-		return { success: false, error: error.message };
+	} catch (error: unknown) {
+		return { success: false, error: toErrorMessage(error) };
 	}
 }
 
-export async function generatePasskeyRegistrationOptionsAction(userId: string) {
+export async function generatePasskeyRegistrationOptionsAction(
+	userId: string,
+): Promise<ActionResult<{ options: PasskeyRegistrationOptionsDto }>> {
 	try {
 		const options = await userController.generatePasskeyRegOptions(userId);
 		return { success: true, options };
-	} catch (error: any) {
-		return { success: false, error: error.message };
+	} catch (error: unknown) {
+		return { success: false, error: toErrorMessage(error) };
 	}
 }
 
 export async function verifyPasskeyRegistrationAction(
 	userId: string,
 	responseJson: string,
-) {
+): Promise<ActionResult> {
 	try {
-		const response =
-			typeof responseJson === "string"
-				? JSON.parse(responseJson)
-				: responseJson;
-
+		const response = parseJson<PasskeyRegistrationResponseDto>(responseJson);
 		const verified = await userController.verifyPasskeyReg(
 			userId,
 			response,
 			expectedOrigin,
 			expectedRPID,
 		);
-		return { success: verified };
-	} catch (error: any) {
-		console.error("WEBFAUTHN_VERIFY_ERROR:", error.message);
-		return { success: false, error: error.message };
+		return verified
+			? { success: true }
+			: { success: false, error: "Passkey registration verification failed" };
+	} catch (error: unknown) {
+		console.error("WEBFAUTHN_VERIFY_ERROR:", toErrorMessage(error));
+		return { success: false, error: toErrorMessage(error) };
 	}
 }
 
-export async function generatePasskeyAuthOptionsAction(username: string) {
+export async function generatePasskeyAuthOptionsAction(
+	username: string,
+): Promise<
+	ActionResult<{ options: PasskeyAuthenticationOptionsDto; userId: string }>
+> {
 	try {
 		const result = await userController.generatePasskeyAuthOptions(username);
 		console.log(
@@ -77,30 +93,31 @@ export async function generatePasskeyAuthOptionsAction(username: string) {
 			JSON.stringify(result.options, null, 2),
 		);
 		return { success: true, options: result.options, userId: result.userId };
-	} catch (error: any) {
-		return { success: false, error: error.message };
+	} catch (error: unknown) {
+		return { success: false, error: toErrorMessage(error) };
 	}
 }
 
 export async function verifyPasskeyAuthAction(
 	userId: string,
 	responseJson: string,
-) {
+): Promise<ActionResult> {
 	try {
-		const response =
-			typeof responseJson === "string"
-				? JSON.parse(responseJson)
-				: responseJson;
-
+		const response = parseJson<PasskeyAuthenticationResponseDto>(responseJson);
 		const verified = await userController.verifyPasskeyAuth(
 			userId,
 			response,
 			expectedOrigin,
 			expectedRPID,
 		);
-		return { success: verified };
-	} catch (error: any) {
-		console.error("WEBFAUTHN_AUTH_VERIFY_ERROR:", error.message);
-		return { success: false, error: error.message };
+		return verified
+			? { success: true }
+			: {
+					success: false,
+					error: "Passkey authentication verification failed",
+				};
+	} catch (error: unknown) {
+		console.error("WEBFAUTHN_AUTH_VERIFY_ERROR:", toErrorMessage(error));
+		return { success: false, error: toErrorMessage(error) };
 	}
 }

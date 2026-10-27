@@ -1,31 +1,43 @@
+import type { AuthenticatorDevice } from "@/app/core/features/webauthn/domain/User";
+import type {
+	AuthenticationVerificationResult,
+	PasskeyAuthenticationOptionsDto,
+	PasskeyAuthenticationResponseDto,
+	PasskeyRegistrationOptionsDto,
+	PasskeyRegistrationResponseDto,
+	RegistrationVerificationResult,
+} from "@/app/core/features/webauthn/application/dto/passkey.dto";
+
 export interface RegistrationOptionsParams {
 	userId: string;
 	username: string;
-	existingAuthenticators: Array<{
-		credentialID: string;
-		transports?: string[];
-	}>;
+	existingAuthenticators: Array<
+		Pick<AuthenticatorDevice, "credentialID" | "transports">
+	>;
 }
 
 export interface IWebAuthnService {
-	generateRegistrationOptions(params: RegistrationOptionsParams): Promise<any>;
+	generateRegistrationOptions(
+		params: RegistrationOptionsParams,
+	): Promise<PasskeyRegistrationOptionsDto>;
+
 	verifyRegistration(
-		response: any,
+		response: PasskeyRegistrationResponseDto,
 		expectedChallenge: string,
-		expectedOrigin: string,
+		expectedOrigin: string | string[],
 		expectedRPID: string,
-	): Promise<any>;
-	generateAuthenticationOptions(): Promise<any>;
+	): Promise<RegistrationVerificationResult>;
+
+	generateAuthenticationOptions(): Promise<PasskeyAuthenticationOptionsDto>;
+
 	verifyAuthentication(
-		response: any,
+		response: PasskeyAuthenticationResponseDto,
 		expectedChallenge: string,
 		expectedOrigin: string,
 		expectedRPID: string,
-		authenticator: {
-			credentialID: string;
-			credentialPublicKey: string;
-			counter: number;
-			transports?: string[];
-		},
-	): Promise<any>;
+		authenticator: Pick<
+			AuthenticatorDevice,
+			"credentialID" | "credentialPublicKey" | "counter" | "transports"
+		>,
+	): Promise<AuthenticationVerificationResult>;
 }

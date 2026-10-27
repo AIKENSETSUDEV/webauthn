@@ -23,7 +23,7 @@ export default function PasskeyDemoPage() {
 	async function handleRegister() {
 		setStatusMessage("Registering user...");
 		const result = await registerUserAction(username, password);
-		if (result.success && result.userId) {
+		if (result.success) {
 			setUserId(result.userId);
 			setIsLoggedIn(true);
 			setStatusMessage("Registered and logged in successfully!");
@@ -35,7 +35,7 @@ export default function PasskeyDemoPage() {
 	async function handleTraditionalLogin() {
 		setStatusMessage("Logging in with password...");
 		const result = await loginWithPasswordAction(username, password);
-		if (result.success && result.userId) {
+		if (result.success) {
 			setUserId(result.userId);
 			setIsLoggedIn(true);
 			setStatusMessage("Logged in with username/password!");
@@ -53,13 +53,17 @@ export default function PasskeyDemoPage() {
 		try {
 			setStatusMessage("Generating passkey registration options...");
 			const optResult = await generatePasskeyRegistrationOptionsAction(userId);
-			if (!optResult.success) throw new Error(optResult.error);
+			if (!optResult.success) {
+				throw new Error(optResult.error);
+			}
 
 			setStatusMessage(
 				"Choose a passkey provider (Windows Hello, Google Password Manager, security key, phone…)",
 			);
 			const attResp = await startRegistration({
-				optionsJSON: optResult.options,
+				optionsJSON: optResult.options as Parameters<
+					typeof startRegistration
+				>[0]["optionsJSON"],
 			});
 
 			setStatusMessage("Verifying passkey on server...");
@@ -80,8 +84,10 @@ export default function PasskeyDemoPage() {
 					`Passkey verification failed${verificationResult.error ? `: ${verificationResult.error}` : "."}`,
 				);
 			}
-		} catch (error: any) {
-			setStatusMessage(`Passkey registration error: ${error.message}`);
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			setStatusMessage(`Passkey registration error: ${message}`);
 		}
 	}
 
@@ -94,14 +100,17 @@ export default function PasskeyDemoPage() {
 
 			setStatusMessage("Fetching authentication options...");
 			const optResult = await generatePasskeyAuthOptionsAction(username);
-			if (!optResult.success || !optResult.userId)
+			if (!optResult.success) {
 				throw new Error(optResult.error);
+			}
 
 			setUserId(optResult.userId);
 
 			setStatusMessage("Prompting passkey…");
 			const assertResp = await startAuthentication({
-				optionsJSON: optResult.options,
+				optionsJSON: optResult.options as Parameters<
+					typeof startAuthentication
+				>[0]["optionsJSON"],
 			});
 
 			setStatusMessage("Verifying passkey login...");
@@ -120,9 +129,12 @@ export default function PasskeyDemoPage() {
 					`Passkey login verification failed${verificationResult.error ? `: ${verificationResult.error}` : "."}`,
 				);
 			}
-		} catch (error: any) {
-			const name = error?.name ? ` (${error.name})` : "";
-			setStatusMessage(`Passkey login error${name}: ${error.message}`);
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			const name =
+				error instanceof Error && error.name ? ` (${error.name})` : "";
+			setStatusMessage(`Passkey login error${name}: ${message}`);
 		}
 	}
 

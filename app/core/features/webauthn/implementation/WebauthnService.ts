@@ -5,13 +5,29 @@ import {
 	verifyRegistrationResponse,
 } from "@simplewebauthn/server";
 import type {
+	AuthenticationResponseJSON,
+	RegistrationResponseJSON,
+} from "@simplewebauthn/server";
+import type {
 	IWebAuthnService,
 	RegistrationOptionsParams,
 } from "@/app/core/features/webauthn/application/IwebAuthnService";
+import type {
+	AuthenticationVerificationResult,
+	PasskeyAuthenticationOptionsDto,
+	PasskeyAuthenticationResponseDto,
+	PasskeyRegistrationOptionsDto,
+	PasskeyRegistrationResponseDto,
+	RegistrationVerificationResult,
+} from "@/app/core/features/webauthn/application/dto/passkey.dto";
+import type { AuthenticatorDevice } from "@/app/core/features/webauthn/domain/User";
+import { toAuthenticatorTransports } from "@/app/core/features/webauthn/implementation/transport";
 
 export class WebAuthnService implements IWebAuthnService {
-	async generateRegistrationOptions(params: RegistrationOptionsParams) {
-		return await generateRegistrationOptions({
+	async generateRegistrationOptions(
+		params: RegistrationOptionsParams,
+	): Promise<PasskeyRegistrationOptionsDto> {
+		const options = await generateRegistrationOptions({
 			rpName: "SimpleWebAuthN",
 			rpID: "localhost",
 			userID: new TextEncoder().encode(params.userId),
@@ -19,66 +35,70 @@ export class WebAuthnService implements IWebAuthnService {
 			userDisplayName: `${params.username} (WebAuthn Demo)`,
 			excludeCredentials: params.existingAuthenticators.map((auth) => ({
 				id: auth.credentialID,
-				...(auth.transports?.length
-					? { transports: auth.transports as any }
-					: {}),
+				...(auth.transports?.length ? { transports: auth.transports } : {}),
 			})),
 			authenticatorSelection: {
 				residentKey: "required",
 				userVerification: "preferred",
 			},
 		});
+
+		return options as unknown as PasskeyRegistrationOptionsDto;
 	}
 
 	async verifyRegistration(
-		response: any,
+		response: PasskeyRegistrationResponseDto,
 		expectedChallenge: string,
 		expectedOrigin: string | string[],
 		expectedRPID: string,
-	) {
-		const normalizedResponse = {
-			id: response.id,
-			rawId: response.rawId,
-			type: response.type || "public-key",
-			clientExtensionResults: response.clientExtensionResults || {},
-			authenticatorAttachment: response.authenticatorAttachment,
-			response: {
-				clientDataJSON: response.response?.clientDataJSON,
-				attestationObject: response.response?.attestationObject,
-				transports: response.response?.transports,
-			},
-		};
-
-		return await verifyRegistrationResponse({
-			response: normalizedResponse as any,
+	): Promise<RegistrationVerificationResult> {
+		const verification = await verifyRegistrationResponse({
+			response: response as RegistrationResponseJSON,
 			expectedChallenge: String(expectedChallenge),
 			expectedOrigin,
 			expectedRPID,
 		});
+
+		if (!verification.verified || !verification.registrationInfo) {
+			return { verified: false };
+		}
+
+		const { credential } = verification.registrationInfo;
+		return {
+			verified: true,
+			registrationInfo: {
+				credential: {
+					id: credential.id,
+					publicKey: credential.publicKey,
+					counter: credential.counter,
+					transports: toAuthenticatorTransports(credential.transports),
+				},
+			},
+		};
 	}
 
-	async generateAuthenticationOptions() {
-		return await generateAuthenticationOptions({
+	async generateAuthenticationOptions(): Promise<PasskeyAuthenticationOptionsDto> {
+		const options = await generateAuthenticationOptions({
 			rpID: "localhost",
 			allowCredentials: [],
 			userVerification: "preferred",
 		});
+
+		return options as unknown as PasskeyAuthenticationOptionsDto;
 	}
 
 	async verifyAuthentication(
-		response: any,
+		response: PasskeyAuthenticationResponseDto,
 		expectedChallenge: string,
 		expectedOrigin: string,
 		expectedRPID: string,
-		authenticator: {
-			credentialID: string;
-			credentialPublicKey: string;
-			counter: number;
-			transports?: string[];
-		},
-	) {
-		return await verifyAuthenticationResponse({
-			response,
+		authenticator: Pick<
+			AuthenticatorDevice,
+			"credentialID" | "credentialPublicKey" | "counter" | "transports"
+		>,
+	): Promise<AuthenticationVerificationResult> {
+		const verification = await verifyAuthenticationResponse({
+			response: response as AuthenticationResponseJSON,
 			expectedChallenge,
 			expectedOrigin,
 			expectedRPID,
@@ -89,8 +109,19 @@ export class WebAuthnService implements IWebAuthnService {
 					"base64url",
 				),
 				counter: authenticator.counter,
-				transports: authenticator.transports as any,
+				transports: authenticator.transports,
 			},
 		});
+
+		if (!verification.verified || !verification.authenticationInfo) {
+			return { verified: false };
+		}
+
+		return {
+			verified: true,
+			authenticationInfo: {
+				newCounter: verification.authenticationInfo.newCounter,
+			},
+		};
 	}
 }

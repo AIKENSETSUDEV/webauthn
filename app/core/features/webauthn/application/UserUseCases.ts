@@ -1,7 +1,20 @@
-// //application/UserUseCases.ts
-import { User, type UserProps } from "@/app/core/features/webauthn/domain/User";
-import type { CreateUserDTO, IUser, LoginUserDTO } from "@/app/core/features/webauthn/application/IUser";
+import type {
+	CreateUserDTO,
+	IUser,
+	LoginUserDTO,
+} from "@/app/core/features/webauthn/application/IUser";
 import type { IWebAuthnService } from "@/app/core/features/webauthn/application/IwebAuthnService";
+import type {
+	PasskeyAuthenticationOptionsDto,
+	PasskeyAuthenticationResponseDto,
+	PasskeyRegistrationOptionsDto,
+	PasskeyRegistrationResponseDto,
+} from "@/app/core/features/webauthn/application/dto/passkey.dto";
+import {
+	User,
+	type AuthenticatorDevice,
+	type UserProps,
+} from "@/app/core/features/webauthn/domain/User";
 
 export type UseCase<T, O> = {
 	execute(input: T): Promise<O>;
@@ -51,14 +64,14 @@ export class SaveUserUseCase implements UseCase<User, User> {
 }
 
 export class GeneratePasskeyRegistrationOptionsUseCase
-	implements UseCase<string, any>
+	implements UseCase<string, PasskeyRegistrationOptionsDto>
 {
 	constructor(
 		private readonly iuser: IUser,
 		private readonly webAuthnService: IWebAuthnService,
 	) {}
 
-	async execute(userId: string): Promise<any> {
+	async execute(userId: string): Promise<PasskeyRegistrationOptionsDto> {
 		const user = await this.iuser.getById(userId);
 		if (!user) throw new Error("User not found");
 
@@ -77,7 +90,7 @@ export class GeneratePasskeyRegistrationOptionsUseCase
 
 export interface VerifyPasskeyRegInput {
 	userId: string;
-	response: any;
+	response: PasskeyRegistrationResponseDto;
 	expectedOrigin: string;
 	expectedRPID: string;
 }
@@ -105,8 +118,7 @@ export class VerifyPasskeyRegistrationUseCase
 		if (verification.verified && verification.registrationInfo) {
 			const { credential } = verification.registrationInfo;
 
-			const newAuthenticator = {
-				// SimpleWebAuthn v13+ returns credential.id as base64url — keep as-is
+			const newAuthenticator: AuthenticatorDevice = {
 				credentialID: credential.id,
 				credentialPublicKey: Buffer.from(credential.publicKey).toString(
 					"base64url",
@@ -125,15 +137,20 @@ export class VerifyPasskeyRegistrationUseCase
 	}
 }
 
+export interface PasskeyAuthOptionsResult {
+	options: PasskeyAuthenticationOptionsDto;
+	userId: string;
+}
+
 export class GeneratePasskeyAuthOptionsUseCase
-	implements UseCase<string, { options: any; userId: string }>
+	implements UseCase<string, PasskeyAuthOptionsResult>
 {
 	constructor(
 		private readonly iuser: IUser,
 		private readonly webAuthnService: IWebAuthnService,
 	) {}
 
-	async execute(username: string): Promise<{ options: any; userId: string }> {
+	async execute(username: string): Promise<PasskeyAuthOptionsResult> {
 		const user = await this.iuser.getByUsername(username);
 		if (!user) throw new Error("User not found");
 		if (!user.authenticators.length) {
@@ -151,7 +168,7 @@ export class GeneratePasskeyAuthOptionsUseCase
 
 export interface VerifyPasskeyAuthInput {
 	userId: string;
-	response: any;
+	response: PasskeyAuthenticationResponseDto;
 	expectedOrigin: string;
 	expectedRPID: string;
 }
@@ -169,7 +186,7 @@ export class VerifyPasskeyAuthUseCase
 		if (!user || !user.challenge)
 			throw new Error("User or challenge not found");
 
-		const userHandle = input.response.response?.userHandle;
+		const userHandle = input.response.response.userHandle;
 		if (
 			userHandle &&
 			Buffer.from(userHandle, "base64url").toString() !== user.id
