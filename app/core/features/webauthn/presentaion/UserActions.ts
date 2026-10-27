@@ -1,16 +1,17 @@
 "use server";
-
-import { UserContainer } from "../implementation/UserContainer";
-import { UserRepository } from "../implementation/UserRepository";
-import { WebAuthnService } from "../implementation/WebauthnService";
-
-import { UserController } from "./UserController";
+import { UserContainer } from "@/app/core/features/webauthn/implementation/UserContainer";
+import { UserRepository } from "@/app/core/features/webauthn/implementation/UserRepository";
+import { WebAuthnService } from "@/app/core/features/webauthn/implementation/WebauthnService";
+import { UserController } from "@/app/core/features/webauthn/presentaion/UserController";
 
 // Composition Root Singletons
 const userRepo = new UserRepository();
 const webAuthnService = new WebAuthnService();
 const userContainer = new UserContainer(userRepo, webAuthnService);
 const userController = new UserController(userContainer);
+
+const expectedOrigin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const expectedRPID = process.env.NEXT_PUBLIC_APP_URL || "localhost";
 
 export async function registerUserAction(username: string, password: string) {
 	try {
@@ -58,8 +59,8 @@ export async function verifyPasskeyRegistrationAction(
 		const verified = await userController.verifyPasskeyReg(
 			userId,
 			response,
-			"http://localhost:3000",
-			"localhost",
+			expectedOrigin,
+			expectedRPID,
 		);
 		return { success: verified };
 	} catch (error: any) {
@@ -94,8 +95,8 @@ export async function verifyPasskeyAuthAction(
 		const verified = await userController.verifyPasskeyAuth(
 			userId,
 			response,
-			"http://localhost:3000",
-			"localhost",
+			expectedOrigin,
+			expectedRPID,
 		);
 		return { success: verified };
 	} catch (error: any) {

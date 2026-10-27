@@ -1,4 +1,4 @@
-import type { User } from "../domain/User";
+import type { User } from "@/app/core/features/webauthn/domain/User";
 
 export interface CreateUserDTO {
 	username: string;

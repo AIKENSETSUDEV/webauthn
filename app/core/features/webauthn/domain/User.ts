@@ -4,7 +4,6 @@ export interface AuthenticatorDevice {
     credentialPublicKey: string;
     counter: number;
     transports?: string[];
-    /** "platform" (Windows Hello) | "cross-platform" (USB key) */
     authenticatorAttachment?: string;
 }
 

@@ -1,7 +1,7 @@
 // //application/UserUseCases.ts
-import { User, type UserProps } from "../domain/User";
-import type { CreateUserDTO, IUser, LoginUserDTO } from "./IUser";
-import type { IWebAuthnService } from "./IwebAuthnService";
+import { User, type UserProps } from "@/app/core/features/webauthn/domain/User";
+import type { CreateUserDTO, IUser, LoginUserDTO } from "@/app/core/features/webauthn/application/IUser";
+import type { IWebAuthnService } from "@/app/core/features/webauthn/application/IwebAuthnService";
 
 export type UseCase<T, O> = {
 	execute(input: T): Promise<O>;

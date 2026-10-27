@@ -7,12 +7,12 @@ import {
 import type {
 	IWebAuthnService,
 	RegistrationOptionsParams,
-} from "../application/IwebAuthnService";
+} from "@/app/core/features/webauthn/application/IwebAuthnService";
 
 export class WebAuthnService implements IWebAuthnService {
 	async generateRegistrationOptions(params: RegistrationOptionsParams) {
 		return await generateRegistrationOptions({
-			rpName: "SimpleWebAuthN NextJS App",
+			rpName: "SimpleWebAuthN",
 			rpID: "localhost",
 			userID: new TextEncoder().encode(params.userId),
 			userName: params.username,
@@ -60,10 +60,6 @@ export class WebAuthnService implements IWebAuthnService {
 	async generateAuthenticationOptions() {
 		return await generateAuthenticationOptions({
 			rpID: "localhost",
-			// Windows resolves a non-empty allowCredentials list only against
-			// Windows Hello and security keys, so passkeys held by plugin
-			// providers (Microsoft Password Manager, 1Password, ...) fall through
-			// to the "insert security key" prompt.
 			allowCredentials: [],
 			userVerification: "preferred",
 		});
