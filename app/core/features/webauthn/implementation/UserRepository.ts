@@ -2,7 +2,6 @@ import type { IUser } from "../application/IUser";
 import type { User } from "../domain/User";
 
 export class UserRepository implements IUser {
-
 	private userdata: User[] = [];
 
 	async create(data: User): Promise<User> {

@@ -1,3 +1,4 @@
+/** biome-ignore-all assist/source/organizeImports: <explanation> */
 import type { AuthenticatorDevice } from "@/app/core/features/webauthn/domain/User";
 import type {
 	AuthenticationVerificationResult,

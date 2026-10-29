@@ -1,17 +1,13 @@
+import type {
+	AuthenticationResponseJSON,
+	RegistrationResponseJSON,
+} from "@simplewebauthn/server";
 import {
 	generateAuthenticationOptions,
 	generateRegistrationOptions,
 	verifyAuthenticationResponse,
 	verifyRegistrationResponse,
 } from "@simplewebauthn/server";
-import type {
-	AuthenticationResponseJSON,
-	RegistrationResponseJSON,
-} from "@simplewebauthn/server";
-import type {
-	IWebAuthnService,
-	RegistrationOptionsParams,
-} from "@/app/core/features/webauthn/application/IwebAuthnService";
 import type {
 	AuthenticationVerificationResult,
 	PasskeyAuthenticationOptionsDto,
@@ -20,6 +16,10 @@ import type {
 	PasskeyRegistrationResponseDto,
 	RegistrationVerificationResult,
 } from "@/app/core/features/webauthn/application/dto/passkey.dto";
+import type {
+	IWebAuthnService,
+	RegistrationOptionsParams,
+} from "@/app/core/features/webauthn/application/IwebAuthnService";
 import type { AuthenticatorDevice } from "@/app/core/features/webauthn/domain/User";
 import { toAuthenticatorTransports } from "@/app/core/features/webauthn/implementation/transport";
 
@@ -104,10 +104,7 @@ export class WebAuthnService implements IWebAuthnService {
 			expectedRPID,
 			credential: {
 				id: authenticator.credentialID,
-				publicKey: Buffer.from(
-					authenticator.credentialPublicKey,
-					"base64url",
-				),
+				publicKey: Buffer.from(authenticator.credentialPublicKey, "base64url"),
 				counter: authenticator.counter,
 				transports: authenticator.transports,
 			},

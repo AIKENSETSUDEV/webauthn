@@ -35,9 +35,6 @@ export function createWebauthnModule(): UserApplication {
 			userRepo,
 			webAuthnService,
 		),
-		verifyPasskeyAuth: new VerifyPasskeyAuthUseCase(
-			userRepo,
-			webAuthnService,
-		),
+		verifyPasskeyAuth: new VerifyPasskeyAuthUseCase(userRepo, webAuthnService),
 	};
 }

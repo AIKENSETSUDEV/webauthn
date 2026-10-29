@@ -1,8 +1,3 @@
-/**
- * Application-owned WebAuthn contracts (no @simplewebauthn imports).
- * Uses TypeScript DOM WebAuthn primitives where they exist.
- */
-
 /** Browser create() options — owned shape; adapter maps library → this. */
 export type PasskeyRegistrationOptionsDto = {
 	challenge: Base64URLString;

@@ -1,18 +1,18 @@
 import type {
-	CreateUserDTO,
-	IUser,
-	LoginUserDTO,
-} from "@/app/core/features/webauthn/application/IUser";
-import type { IWebAuthnService } from "@/app/core/features/webauthn/application/IwebAuthnService";
-import type {
 	PasskeyAuthenticationOptionsDto,
 	PasskeyAuthenticationResponseDto,
 	PasskeyRegistrationOptionsDto,
 	PasskeyRegistrationResponseDto,
 } from "@/app/core/features/webauthn/application/dto/passkey.dto";
+import type {
+	CreateUserDTO,
+	IUser,
+	LoginUserDTO,
+} from "@/app/core/features/webauthn/application/IUser";
+import type { IWebAuthnService } from "@/app/core/features/webauthn/application/IwebAuthnService";
 import {
-	User,
 	type AuthenticatorDevice,
+	User,
 	type UserProps,
 } from "@/app/core/features/webauthn/domain/User";
 
@@ -42,7 +42,7 @@ export class LoginWithPasswordUseCase implements UseCase<LoginUserDTO, User> {
 	constructor(private readonly iuser: IUser) {}
 	async execute(input: LoginUserDTO): Promise<User> {
 		const user = await this.iuser.getByUsername(input.username);
-		if (!user || user.password !== input.password) {
+		if (user?.password !== input.password) {
 			throw new Error("Invalid username or password");
 		}
 		return user;
@@ -105,8 +105,7 @@ export class VerifyPasskeyRegistrationUseCase
 
 	async execute(input: VerifyPasskeyRegInput): Promise<boolean> {
 		const user = await this.iuser.getById(input.userId);
-		if (!user || !user.challenge)
-			throw new Error("User or challenge not found");
+		if (!user?.challenge) throw new Error("User or challenge not found");
 
 		const verification = await this.webAuthnService.verifyRegistration(
 			input.response,
@@ -183,8 +182,7 @@ export class VerifyPasskeyAuthUseCase
 
 	async execute(input: VerifyPasskeyAuthInput): Promise<boolean> {
 		const user = await this.iuser.getById(input.userId);
-		if (!user || !user.challenge)
-			throw new Error("User or challenge not found");
+		if (!user?.challenge) throw new Error("User or challenge not found");
 
 		const userHandle = input.response.response.userHandle;
 		if (

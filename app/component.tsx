@@ -80,13 +80,13 @@ export default function PasskeyDemoPage() {
 					`Passkey added (${attachment}; transports: ${transports}). Use that same provider when logging in.`,
 				);
 			} else {
-				setStatusMessage(
-					`Passkey verification failed${verificationResult.error ? `: ${verificationResult.error}` : "."}`,
-				);
+				const message = verificationResult.error
+					? verificationResult.error
+					: "";
+				setStatusMessage(`Passkey verification failed${message}`);
 			}
 		} catch (error: unknown) {
-			const message =
-				error instanceof Error ? error.message : String(error);
+			const message = error instanceof Error ? error.message : String(error);
 			setStatusMessage(`Passkey registration error: ${message}`);
 		}
 	}
@@ -125,13 +125,14 @@ export default function PasskeyDemoPage() {
 					"Logged in successfully using Passkey without a password!",
 				);
 			} else {
-				setStatusMessage(
-					`Passkey login verification failed${verificationResult.error ? `: ${verificationResult.error}` : "."}`,
-				);
+				const message = verificationResult.error
+					? verificationResult.error
+					: "";
+
+				setStatusMessage(`Passkey login verification failed ${message}`);
 			}
 		} catch (error: unknown) {
-			const message =
-				error instanceof Error ? error.message : String(error);
+			const message = error instanceof Error ? error.message : String(error);
 			const name =
 				error instanceof Error && error.name ? ` (${error.name})` : "";
 			setStatusMessage(`Passkey login error${name}: ${message}`);
@@ -161,7 +162,9 @@ export default function PasskeyDemoPage() {
 					</h2>
 
 					<div>
-						<label className="block text-sm font-medium">Username</label>
+						<label className="block text-sm font-medium" htmlFor="username">
+							Username
+						</label>
 						<input
 							type="text"
 							name="username"
@@ -174,7 +177,9 @@ export default function PasskeyDemoPage() {
 					</div>
 
 					<div>
-						<label className="block text-sm font-medium">Password</label>
+						<label className="block text-sm font-medium" htmlFor="password">
+							Password
+						</label>
 						<input
 							type="password"
 							name="password"
@@ -188,12 +193,14 @@ export default function PasskeyDemoPage() {
 
 					<div className="flex gap-2 pt-2">
 						<button
+							type="button"
 							onClick={handleRegister}
 							className="flex-1 bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
 						>
 							Register
 						</button>
 						<button
+							type="button"
 							onClick={handleTraditionalLogin}
 							className="flex-1 bg-gray-600 text-white p-2 rounded hover:bg-gray-700"
 						>
@@ -205,10 +212,11 @@ export default function PasskeyDemoPage() {
 
 					<div>
 						<button
+							type="button"
 							onClick={handlePasskeyLogin}
 							className="w-full bg-emerald-600 text-white p-2 rounded hover:bg-emerald-700 font-medium"
 						>
-							 Login with Passkey (No Password)
+							Login with Passkey (No Password)
 						</button>
 					</div>
 				</div>
@@ -223,6 +231,7 @@ export default function PasskeyDemoPage() {
 
 					<div className="space-y-2 pt-2">
 						<button
+							type="button"
 							onClick={handleAddPasskey}
 							className="w-full bg-purple-600 text-white p-2 rounded hover:bg-purple-700"
 						>
@@ -230,6 +239,7 @@ export default function PasskeyDemoPage() {
 						</button>
 
 						<button
+							type="button"
 							onClick={handleLogout}
 							className="w-full bg-red-600 text-white p-2 rounded hover:bg-red-700"
 						>

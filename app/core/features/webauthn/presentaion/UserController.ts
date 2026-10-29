@@ -1,14 +1,14 @@
 import type {
+	PasskeyAuthenticationResponseDto,
+	PasskeyRegistrationOptionsDto,
+	PasskeyRegistrationResponseDto,
+} from "@/app/core/features/webauthn/application/dto/passkey.dto";
+import type {
 	CreateUserDTO,
 	LoginUserDTO,
 } from "@/app/core/features/webauthn/application/IUser";
 import type { UserApplication } from "@/app/core/features/webauthn/application/UserApplication";
 import type { PasskeyAuthOptionsResult } from "@/app/core/features/webauthn/application/UserUseCases";
-import type {
-	PasskeyAuthenticationResponseDto,
-	PasskeyRegistrationOptionsDto,
-	PasskeyRegistrationResponseDto,
-} from "@/app/core/features/webauthn/application/dto/passkey.dto";
 import type { User } from "@/app/core/features/webauthn/domain/User";
 
 /**
