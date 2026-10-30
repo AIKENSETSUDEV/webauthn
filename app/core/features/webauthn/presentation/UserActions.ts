@@ -84,7 +84,6 @@ export async function loginWithPasswordAction(
 ): Promise<PublicUser | Error> {
 	const parsed = credentials.parse({ username, password });
 	if (!parsed.success) return parsed.error;
-
 	const value = await SafeExecute(app.loginWithPassword.execute(parsed.data));
 	if (value.error) return value.error;
 	return toPublicUser(value.data);
@@ -156,4 +155,14 @@ export async function verifyPasskeyAuthAction(
 	);
 	if (value.error) return value.error;
 	return { verified: true };
+}
+
+
+export async function GetUserAction(userId: string): Promise<PublicUser | Error> {
+	const parsed = userIdInput.parse({ userId });
+	if (!parsed.success) return parsed.error;
+
+	const value = await SafeExecute(app.getById.execute(parsed.data.userId));
+	if (value.error) return value.error;
+	return toPublicUser(value.data);
 }

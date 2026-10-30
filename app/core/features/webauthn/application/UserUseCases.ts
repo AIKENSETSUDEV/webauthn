@@ -205,6 +205,14 @@ export class VerifyPasskeyAuthUseCase
 	}
 }
 
+export class GetUserByIdUseCase implements UseCase<string, User> {
+	constructor(private readonly iuser: IUser) { }
+
+	async execute(id: string): Promise<User> {
+		return await this.iuser.getById(id);
+	}
+}
+
 
 export interface UserApplication {
 	createUser: CreateUserUseCase;
@@ -213,4 +221,5 @@ export interface UserApplication {
 	verifyPasskeyReg: VerifyPasskeyRegistrationUseCase;
 	generatePasskeyAuthOptions: GeneratePasskeyAuthOptionsUseCase;
 	verifyPasskeyAuth: VerifyPasskeyAuthUseCase;
+	getById: GetUserByIdUseCase;
 }

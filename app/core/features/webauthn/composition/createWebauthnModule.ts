@@ -3,6 +3,7 @@ import {
 	GeneratePasskeyAuthOptionsUseCase,
 	GeneratePasskeyRegistrationOptionsUseCase,
 	LoginWithPasswordUseCase,
+	GetUserByIdUseCase,
 	type UserApplication,
 	VerifyPasskeyAuthUseCase,
 	VerifyPasskeyRegistrationUseCase,
@@ -45,6 +46,7 @@ export function createWebauthnModule(): UserApplication {
 			webauthn,
 		),
 		verifyPasskeyAuth: new VerifyPasskeyAuthUseCase(users, webauthn, time),
+		getById: new GetUserByIdUseCase(users),
 	};
 
 	return moduleInstance;
