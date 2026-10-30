@@ -10,6 +10,8 @@ export interface UserProps {
 	id: string;
 	username: string;
 	password: string;
+	createdAt: Date;
+	lastLoggedIn?: Date;
 	challenge?: string;
 	authenticators?: AuthenticatorDevice[];
 }
@@ -18,6 +20,8 @@ export class User {
 	public readonly id: string;
 	public readonly username: string;
 	public readonly password: string;
+	public readonly createdAt: Date;
+	public lastLoggedIn?: Date;
 	public challenge?: string;
 	public authenticators: AuthenticatorDevice[] = [];
 
@@ -25,6 +29,8 @@ export class User {
 		this.id = props.id;
 		this.username = props.username;
 		this.password = props.password;
+		this.createdAt = props.createdAt;
+		this.lastLoggedIn = props.lastLoggedIn;
 		this.challenge = props.challenge;
 		this.authenticators = props.authenticators || [];
 
@@ -36,10 +42,21 @@ export class User {
 		}
 	}
 
-	updateChallenge(challenge: string): User {
+	updateChallenge(challenge: string | undefined): User {
 		return new User({
 			...this,
 			challenge,
+		});
+	}
+
+	clearChallenge(): User {
+		return this.updateChallenge(undefined);
+	}
+
+	updateLastLoggedIn(at: Date): User {
+		return new User({
+			...this,
+			lastLoggedIn: at,
 		});
 	}
 
@@ -48,6 +65,16 @@ export class User {
 			...this,
 			authenticators: [...this.authenticators, authenticator],
 			challenge: undefined,
+		});
+	}
+
+	updateAuthenticatorCounter(credentialID: string, counter: number): User {
+		const authenticators = this.authenticators.map((auth) =>
+			auth.credentialID === credentialID ? { ...auth, counter } : auth,
+		);
+		return new User({
+			...this,
+			authenticators,
 		});
 	}
 }

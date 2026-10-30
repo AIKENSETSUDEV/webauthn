@@ -1,11 +1,6 @@
 import type { User } from "@/app/core/features/webauthn/domain/User";
 
-export interface CreateUserDTO {
-	username: string;
-	password: string;
-}
-
-export interface LoginUserDTO {
+export interface CredentialsDTO {
 	username: string;
 	password: string;
 }

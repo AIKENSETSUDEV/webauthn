@@ -21,15 +21,40 @@ import type {
 	RegistrationOptionsParams,
 } from "@/app/core/features/webauthn/application/IwebAuthnService";
 import type { AuthenticatorDevice } from "@/app/core/features/webauthn/domain/User";
-import { toAuthenticatorTransports } from "@/app/core/features/webauthn/implementation/transport";
+
+export type WebAuthnConfig = {
+	rpID: string;
+	rpName: string;
+	origin: string | string[];
+};
+
+const AUTHENTICATOR_TRANSPORTS = new Set<string>([
+	"usb",
+	"ble",
+	"nfc",
+	"internal",
+	"hybrid",
+]);
+
+function toAuthenticatorTransports(
+	transports?: readonly string[],
+): AuthenticatorTransport[] | undefined {
+	if (!transports?.length) return undefined;
+	const filtered = transports.filter((t): t is AuthenticatorTransport =>
+		AUTHENTICATOR_TRANSPORTS.has(t),
+	);
+	return filtered.length ? filtered : undefined;
+}
 
 export class WebAuthnService implements IWebAuthnService {
+	constructor(private readonly config: WebAuthnConfig) {}
+
 	async generateRegistrationOptions(
 		params: RegistrationOptionsParams,
 	): Promise<PasskeyRegistrationOptionsDto> {
 		const options = await generateRegistrationOptions({
-			rpName: "SimpleWebAuthN",
-			rpID: "localhost",
+			rpName: this.config.rpName,
+			rpID: this.config.rpID,
 			userID: new TextEncoder().encode(params.userId),
 			userName: params.username,
 			userDisplayName: `${params.username} (WebAuthn Demo)`,
@@ -49,14 +74,12 @@ export class WebAuthnService implements IWebAuthnService {
 	async verifyRegistration(
 		response: PasskeyRegistrationResponseDto,
 		expectedChallenge: string,
-		expectedOrigin: string | string[],
-		expectedRPID: string,
 	): Promise<RegistrationVerificationResult> {
 		const verification = await verifyRegistrationResponse({
 			response: response as RegistrationResponseJSON,
 			expectedChallenge: String(expectedChallenge),
-			expectedOrigin,
-			expectedRPID,
+			expectedOrigin: this.config.origin,
+			expectedRPID: this.config.rpID,
 		});
 
 		if (!verification.verified || !verification.registrationInfo) {
@@ -79,7 +102,7 @@ export class WebAuthnService implements IWebAuthnService {
 
 	async generateAuthenticationOptions(): Promise<PasskeyAuthenticationOptionsDto> {
 		const options = await generateAuthenticationOptions({
-			rpID: "localhost",
+			rpID: this.config.rpID,
 			allowCredentials: [],
 			userVerification: "preferred",
 		});
@@ -90,8 +113,6 @@ export class WebAuthnService implements IWebAuthnService {
 	async verifyAuthentication(
 		response: PasskeyAuthenticationResponseDto,
 		expectedChallenge: string,
-		expectedOrigin: string,
-		expectedRPID: string,
 		authenticator: Pick<
 			AuthenticatorDevice,
 			"credentialID" | "credentialPublicKey" | "counter" | "transports"
@@ -100,8 +121,8 @@ export class WebAuthnService implements IWebAuthnService {
 		const verification = await verifyAuthenticationResponse({
 			response: response as AuthenticationResponseJSON,
 			expectedChallenge,
-			expectedOrigin,
-			expectedRPID,
+			expectedOrigin: this.config.origin,
+			expectedRPID: this.config.rpID,
 			credential: {
 				id: authenticator.credentialID,
 				publicKey: Buffer.from(authenticator.credentialPublicKey, "base64url"),

@@ -1,4 +1,5 @@
 "use client";
+
 import {
 	startAuthentication,
 	startRegistration,
@@ -11,7 +12,8 @@ import {
 	registerUserAction,
 	verifyPasskeyAuthAction,
 	verifyPasskeyRegistrationAction,
-} from "@/app/core/features/webauthn/presentaion/UserActions";
+} from "@/app/core/features/webauthn/presentation/UserActions";
+import { isErrorResult } from "@/app/core/utilities/ErrorHandler";
 
 export default function PasskeyDemoPage() {
 	const [username, setUsername] = useState("");
@@ -23,25 +25,25 @@ export default function PasskeyDemoPage() {
 	async function handleRegister() {
 		setStatusMessage("Registering user...");
 		const result = await registerUserAction(username, password);
-		if (result.success) {
-			setUserId(result.userId);
-			setIsLoggedIn(true);
-			setStatusMessage("Registered and logged in successfully!");
-		} else {
-			setStatusMessage(`Registration failed: ${result.error}`);
+		if (isErrorResult(result)) {
+			setStatusMessage(`Registration failed: ${result.message}`);
+			return;
 		}
+		setUserId(result.id);
+		setIsLoggedIn(true);
+		setStatusMessage("Registered and logged in successfully!");
 	}
 
 	async function handleTraditionalLogin() {
 		setStatusMessage("Logging in with password...");
 		const result = await loginWithPasswordAction(username, password);
-		if (result.success) {
-			setUserId(result.userId);
-			setIsLoggedIn(true);
-			setStatusMessage("Logged in with username/password!");
-		} else {
-			setStatusMessage(`Login failed: ${result.error}`);
+		if (isErrorResult(result)) {
+			setStatusMessage(`Login failed: ${result.message}`);
+			return;
 		}
+		setUserId(result.id);
+		setIsLoggedIn(true);
+		setStatusMessage("Logged in with username/password!");
 	}
 
 	async function handleAddPasskey() {
@@ -53,9 +55,7 @@ export default function PasskeyDemoPage() {
 		try {
 			setStatusMessage("Generating passkey registration options...");
 			const optResult = await generatePasskeyRegistrationOptionsAction(userId);
-			if (!optResult.success) {
-				throw new Error(optResult.error);
-			}
+			if (isErrorResult(optResult)) throw new Error(optResult.message);
 
 			setStatusMessage(
 				"Choose a passkey provider (Windows Hello, Google Password Manager, security key, phone…)",
@@ -72,19 +72,19 @@ export default function PasskeyDemoPage() {
 				JSON.stringify(attResp),
 			);
 
-			if (verificationResult.success) {
-				const transports =
-					attResp.response?.transports?.join(", ") || "unknown";
-				const attachment = attResp.authenticatorAttachment || "unknown";
+			if (isErrorResult(verificationResult)) {
 				setStatusMessage(
-					`Passkey added (${attachment}; transports: ${transports}). Use that same provider when logging in.`,
+					`Passkey verification failed: ${verificationResult.message}`,
 				);
-			} else {
-				const message = verificationResult.error
-					? verificationResult.error
-					: "";
-				setStatusMessage(`Passkey verification failed${message}`);
+				return;
 			}
+
+			const transports =
+				attResp.response?.transports?.join(", ") || "unknown";
+			const attachment = attResp.authenticatorAttachment || "unknown";
+			setStatusMessage(
+				`Passkey added (${attachment}; transports: ${transports}). Use that same provider when logging in.`,
+			);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
 			setStatusMessage(`Passkey registration error: ${message}`);
@@ -100,9 +100,7 @@ export default function PasskeyDemoPage() {
 
 			setStatusMessage("Fetching authentication options...");
 			const optResult = await generatePasskeyAuthOptionsAction(username);
-			if (!optResult.success) {
-				throw new Error(optResult.error);
-			}
+			if (isErrorResult(optResult)) throw new Error(optResult.message);
 
 			setUserId(optResult.userId);
 
@@ -119,18 +117,17 @@ export default function PasskeyDemoPage() {
 				JSON.stringify(assertResp),
 			);
 
-			if (verificationResult.success) {
-				setIsLoggedIn(true);
+			if (isErrorResult(verificationResult)) {
 				setStatusMessage(
-					"Logged in successfully using Passkey without a password!",
+					`Passkey login verification failed: ${verificationResult.message}`,
 				);
-			} else {
-				const message = verificationResult.error
-					? verificationResult.error
-					: "";
-
-				setStatusMessage(`Passkey login verification failed ${message}`);
+				return;
 			}
+
+			setIsLoggedIn(true);
+			setStatusMessage(
+				"Logged in successfully using Passkey without a password!",
+			);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
 			const name =

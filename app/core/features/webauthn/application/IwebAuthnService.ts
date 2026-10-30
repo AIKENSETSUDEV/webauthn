@@ -1,5 +1,3 @@
-/** biome-ignore-all assist/source/organizeImports: <explanation> */
-import type { AuthenticatorDevice } from "@/app/core/features/webauthn/domain/User";
 import type {
 	AuthenticationVerificationResult,
 	PasskeyAuthenticationOptionsDto,
@@ -8,6 +6,7 @@ import type {
 	PasskeyRegistrationResponseDto,
 	RegistrationVerificationResult,
 } from "@/app/core/features/webauthn/application/dto/passkey.dto";
+import type { AuthenticatorDevice } from "@/app/core/features/webauthn/domain/User";
 
 export interface RegistrationOptionsParams {
 	userId: string;
@@ -25,8 +24,6 @@ export interface IWebAuthnService {
 	verifyRegistration(
 		response: PasskeyRegistrationResponseDto,
 		expectedChallenge: string,
-		expectedOrigin: string | string[],
-		expectedRPID: string,
 	): Promise<RegistrationVerificationResult>;
 
 	generateAuthenticationOptions(): Promise<PasskeyAuthenticationOptionsDto>;
@@ -34,8 +31,6 @@ export interface IWebAuthnService {
 	verifyAuthentication(
 		response: PasskeyAuthenticationResponseDto,
 		expectedChallenge: string,
-		expectedOrigin: string,
-		expectedRPID: string,
 		authenticator: Pick<
 			AuthenticatorDevice,
 			"credentialID" | "credentialPublicKey" | "counter" | "transports"

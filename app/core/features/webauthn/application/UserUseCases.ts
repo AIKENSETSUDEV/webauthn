@@ -5,9 +5,8 @@ import type {
 	PasskeyRegistrationResponseDto,
 } from "@/app/core/features/webauthn/application/dto/passkey.dto";
 import type {
-	CreateUserDTO,
+	CredentialsDTO,
 	IUser,
-	LoginUserDTO,
 } from "@/app/core/features/webauthn/application/IUser";
 import type { IWebAuthnService } from "@/app/core/features/webauthn/application/IwebAuthnService";
 import {
@@ -15,65 +14,61 @@ import {
 	User,
 	type UserProps,
 } from "@/app/core/features/webauthn/domain/User";
+import type { IIDGenerator, ITimeGenerator } from "@/app/core/utilities/Generators";
+import type { UseCase } from "@/app/core/utilities/IUseCase";
 
-export type UseCase<T, O> = {
-	execute(input: T): Promise<O>;
-};
+export class CreateUserUseCase implements UseCase<CredentialsDTO, User> {
+	constructor(
+		private readonly iuser: IUser,
+		private readonly idGenerator: IIDGenerator,
+		private readonly timeGenerator: ITimeGenerator,
+	) { }
 
-export class CreateUserUseCase implements UseCase<CreateUserDTO, User> {
-	constructor(private readonly iuser: IUser) {}
-	async execute(input: CreateUserDTO): Promise<User> {
+	async execute(input: CredentialsDTO): Promise<User> {
 		const existing = await this.iuser.getByUsername(input.username);
 		if (existing) {
 			throw new Error("Username already exists");
 		}
 
+		const now = this.timeGenerator.generate();
 		const data: UserProps = {
-			id: crypto.randomUUID(),
+			id: this.idGenerator.generate(),
 			username: input.username,
 			password: input.password,
+			createdAt: now,
+			lastLoggedIn: now,
 			authenticators: [],
 		};
 		return this.iuser.create(new User(data));
 	}
 }
 
-export class LoginWithPasswordUseCase implements UseCase<LoginUserDTO, User> {
-	constructor(private readonly iuser: IUser) {}
-	async execute(input: LoginUserDTO): Promise<User> {
+export class LoginWithPasswordUseCase implements UseCase<CredentialsDTO, User> {
+	constructor(
+		private readonly iuser: IUser,
+		private readonly timeGenerator: ITimeGenerator,
+	) { }
+
+	async execute(input: CredentialsDTO): Promise<User> {
 		const user = await this.iuser.getByUsername(input.username);
-		if (user?.password !== input.password) {
+		if (!user || user.password !== input.password) {
 			throw new Error("Invalid username or password");
 		}
-		return user;
-	}
-}
 
-export class GetByIDUseCase implements UseCase<string, User> {
-	constructor(private readonly iuser: IUser) {}
-	execute(input: string): Promise<User> {
-		return this.iuser.getById(input);
-	}
-}
-
-export class SaveUserUseCase implements UseCase<User, User> {
-	constructor(private readonly iuser: IUser) {}
-	execute(input: User): Promise<User> {
-		return this.iuser.save(input);
+		const updated = user.updateLastLoggedIn(this.timeGenerator.generate());
+		return this.iuser.save(updated);
 	}
 }
 
 export class GeneratePasskeyRegistrationOptionsUseCase
-	implements UseCase<string, PasskeyRegistrationOptionsDto>
-{
+	implements UseCase<string, PasskeyRegistrationOptionsDto> {
 	constructor(
 		private readonly iuser: IUser,
 		private readonly webAuthnService: IWebAuthnService,
-	) {}
+	) { }
 
 	async execute(userId: string): Promise<PasskeyRegistrationOptionsDto> {
 		const user = await this.iuser.getById(userId);
-		if (!user) throw new Error("User not found");
 
 		const options = await this.webAuthnService.generateRegistrationOptions({
 			userId: user.id,
@@ -81,9 +76,7 @@ export class GeneratePasskeyRegistrationOptionsUseCase
 			existingAuthenticators: user.authenticators,
 		});
 
-		const updated = user.updateChallenge(options.challenge);
-		await this.iuser.save(updated);
-
+		await this.iuser.save(user.updateChallenge(options.challenge));
 		return options;
 	}
 }
@@ -91,48 +84,41 @@ export class GeneratePasskeyRegistrationOptionsUseCase
 export interface VerifyPasskeyRegInput {
 	userId: string;
 	response: PasskeyRegistrationResponseDto;
-	expectedOrigin: string;
-	expectedRPID: string;
 }
 
 export class VerifyPasskeyRegistrationUseCase
-	implements UseCase<VerifyPasskeyRegInput, boolean>
-{
+	implements UseCase<VerifyPasskeyRegInput, true> {
 	constructor(
 		private readonly iuser: IUser,
 		private readonly webAuthnService: IWebAuthnService,
-	) {}
+	) { }
 
-	async execute(input: VerifyPasskeyRegInput): Promise<boolean> {
+	async execute(input: VerifyPasskeyRegInput): Promise<true> {
 		const user = await this.iuser.getById(input.userId);
-		if (!user?.challenge) throw new Error("User or challenge not found");
+		if (!user.challenge) throw new Error("User or challenge not found");
 
 		const verification = await this.webAuthnService.verifyRegistration(
 			input.response,
 			user.challenge,
-			input.expectedOrigin,
-			input.expectedRPID,
 		);
 
-		if (verification.verified && verification.registrationInfo) {
-			const { credential } = verification.registrationInfo;
-
-			const newAuthenticator: AuthenticatorDevice = {
-				credentialID: credential.id,
-				credentialPublicKey: Buffer.from(credential.publicKey).toString(
-					"base64url",
-				),
-				counter: credential.counter,
-				transports: credential.transports,
-				authenticatorAttachment: input.response.authenticatorAttachment,
-			};
-
-			const updated = user.addAuthenticator(newAuthenticator);
-			await this.iuser.save(updated);
-			return true;
+		if (!verification.verified || !verification.registrationInfo) {
+			throw new Error("Passkey registration verification failed");
 		}
 
-		return false;
+		const { credential } = verification.registrationInfo;
+		const newAuthenticator: AuthenticatorDevice = {
+			credentialID: credential.id,
+			credentialPublicKey: Buffer.from(credential.publicKey).toString(
+				"base64url",
+			),
+			counter: credential.counter,
+			transports: credential.transports,
+			authenticatorAttachment: input.response.authenticatorAttachment,
+		};
+
+		await this.iuser.save(user.addAuthenticator(newAuthenticator));
+		return true;
 	}
 }
 
@@ -142,12 +128,11 @@ export interface PasskeyAuthOptionsResult {
 }
 
 export class GeneratePasskeyAuthOptionsUseCase
-	implements UseCase<string, PasskeyAuthOptionsResult>
-{
+	implements UseCase<string, PasskeyAuthOptionsResult> {
 	constructor(
 		private readonly iuser: IUser,
 		private readonly webAuthnService: IWebAuthnService,
-	) {}
+	) { }
 
 	async execute(username: string): Promise<PasskeyAuthOptionsResult> {
 		const user = await this.iuser.getByUsername(username);
@@ -157,9 +142,7 @@ export class GeneratePasskeyAuthOptionsUseCase
 		}
 
 		const options = await this.webAuthnService.generateAuthenticationOptions();
-
-		const updated = user.updateChallenge(options.challenge);
-		await this.iuser.save(updated);
+		await this.iuser.save(user.updateChallenge(options.challenge));
 
 		return { options, userId: user.id };
 	}
@@ -168,21 +151,19 @@ export class GeneratePasskeyAuthOptionsUseCase
 export interface VerifyPasskeyAuthInput {
 	userId: string;
 	response: PasskeyAuthenticationResponseDto;
-	expectedOrigin: string;
-	expectedRPID: string;
 }
 
 export class VerifyPasskeyAuthUseCase
-	implements UseCase<VerifyPasskeyAuthInput, boolean>
-{
+	implements UseCase<VerifyPasskeyAuthInput, true> {
 	constructor(
 		private readonly iuser: IUser,
 		private readonly webAuthnService: IWebAuthnService,
-	) {}
+		private readonly timeGenerator: ITimeGenerator,
+	) { }
 
-	async execute(input: VerifyPasskeyAuthInput): Promise<boolean> {
+	async execute(input: VerifyPasskeyAuthInput): Promise<true> {
 		const user = await this.iuser.getById(input.userId);
-		if (!user?.challenge) throw new Error("User or challenge not found");
+		if (!user.challenge) throw new Error("User or challenge not found");
 
 		const userHandle = input.response.response.userHandle;
 		if (
@@ -204,18 +185,32 @@ export class VerifyPasskeyAuthUseCase
 		const verification = await this.webAuthnService.verifyAuthentication(
 			input.response,
 			user.challenge,
-			input.expectedOrigin,
-			input.expectedRPID,
 			authenticator,
 		);
 
-		if (verification.verified && verification.authenticationInfo) {
-			authenticator.counter = verification.authenticationInfo.newCounter;
-			const updated = user.updateChallenge("");
-			await this.iuser.save(updated);
-			return true;
+		if (!verification.verified || !verification.authenticationInfo) {
+			throw new Error("Passkey authentication verification failed");
 		}
 
-		return false;
+		const updated = user
+			.updateAuthenticatorCounter(
+				authenticator.credentialID,
+				verification.authenticationInfo.newCounter,
+			)
+			.clearChallenge()
+			.updateLastLoggedIn(this.timeGenerator.generate());
+
+		await this.iuser.save(updated);
+		return true;
 	}
+}
+
+
+export interface UserApplication {
+	createUser: CreateUserUseCase;
+	loginWithPassword: LoginWithPasswordUseCase;
+	generatePasskeyRegOptions: GeneratePasskeyRegistrationOptionsUseCase;
+	verifyPasskeyReg: VerifyPasskeyRegistrationUseCase;
+	generatePasskeyAuthOptions: GeneratePasskeyAuthOptionsUseCase;
+	verifyPasskeyAuth: VerifyPasskeyAuthUseCase;
 }

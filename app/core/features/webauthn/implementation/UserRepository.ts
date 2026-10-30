@@ -1,5 +1,5 @@
-import type { IUser } from "../application/IUser";
-import type { User } from "../domain/User";
+import type { IUser } from "@/app/core/features/webauthn/application/IUser";
+import type { User } from "@/app/core/features/webauthn/domain/User";
 
 export class UserRepository implements IUser {
 	private userdata: User[] = [];
@@ -18,8 +18,7 @@ export class UserRepository implements IUser {
 	}
 
 	async getByUsername(username: string): Promise<User | null> {
-		const found = this.userdata.find((u) => u.username === username);
-		return found || null;
+		return this.userdata.find((u) => u.username === username) ?? null;
 	}
 
 	async save(data: User): Promise<User> {
